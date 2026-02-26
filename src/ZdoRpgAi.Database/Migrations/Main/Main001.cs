@@ -11,7 +11,7 @@ public class Main001 : IMigration {
     public string GetSql() => """
         CREATE TABLE topic (
             id TEXT PRIMARY KEY,
-            meta JSONB NOT NULL,
+            data JSONB NOT NULL,
             content JSONB NOT NULL
         );
 
@@ -19,20 +19,20 @@ public class Main001 : IMigration {
             id TEXT PRIMARY KEY,
             topicId TEXT NOT NULL,
             sortOrder INT,
-            meta JSONB NOT NULL,
+            data JSONB NOT NULL,
             content JSONB NOT NULL
         );
 
         CREATE TABLE npc (
             id TEXT PRIMARY KEY,
-            meta JSONB NOT NULL
+            data JSONB NOT NULL
         );
 
         CREATE TABLE npc_pinned_topic (
             npcId TEXT NOT NULL,
             topicId TEXT NOT NULL,
             sortOrder INT,
-            meta JSONB NOT NULL,
+            data JSONB NOT NULL,
             PRIMARY KEY (npcId, topicId)
         );
 
@@ -47,13 +47,13 @@ public class Main001 : IMigration {
 
         CREATE TABLE npc_attribute (
             id TEXT PRIMARY KEY,
-            meta JSONB NOT NULL
+            data JSONB NOT NULL
         );
 
         CREATE TABLE npc_attribute_value (
             npcId TEXT NOT NULL,
             attributeId TEXT NOT NULL,
-            meta JSONB NOT NULL,
+            data JSONB NOT NULL,
             PRIMARY KEY (npcId, attributeId)
         );
         """;

@@ -11,18 +11,18 @@ public class SaveGame001 : IMigration {
     public string GetSql() => """
         CREATE TABLE IF NOT EXISTS player (
             id TEXT PRIMARY KEY,
-            meta JSONB NOT NULL
+            data JSONB NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS npc_new (
             id TEXT PRIMARY KEY,
-            meta JSONB NOT NULL
+            data JSONB NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS npc_attribute_value_new (
             npcId TEXT NOT NULL,
             attributeId TEXT NOT NULL,
-            meta JSONB NOT NULL,
+            data JSONB NOT NULL,
             PRIMARY KEY (npcId, attributeId)
         );
         """;

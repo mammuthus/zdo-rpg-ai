@@ -4,19 +4,21 @@ using System.Text.Json.Serialization.Metadata;
 namespace ZdoRpgAi.Util;
 
 public static class ConfigParser {
-    public static T FromFile<T>(string path, JsonTypeInfo<T> jsonTypeInfo) {
+    public static T ParseYamlFile<T>(string path, JsonTypeInfo<T> jsonTypeInfo) {
         var fullPath = Path.GetFullPath(path);
-        string json;
+        string yaml;
         try {
-            json = File.ReadAllText(fullPath);
+            yaml = File.ReadAllText(fullPath);
         }
         catch (Exception ex) {
             Console.Error.WriteLine($"Failed to read config: {fullPath} ({ex.Message})");
             Environment.Exit(1);
-            return default!; // unreachable
+            return default!;
         }
 
         try {
+            var jsonNode = YamlToJsonTransformer.Parse(yaml);
+            var json = jsonNode.ToJsonString();
             var config = JsonSerializer.Deserialize(json, jsonTypeInfo);
             if (config == null) {
                 Console.Error.WriteLine($"Failed to parse config: {fullPath}");
@@ -24,10 +26,10 @@ public static class ConfigParser {
             }
             return config;
         }
-        catch (JsonException ex) {
-            Console.Error.WriteLine($"Invalid JSON in config: {fullPath} ({ex.Message})");
+        catch (Exception ex) {
+            Console.Error.WriteLine($"Invalid config: {fullPath} ({ex.Message})");
             Environment.Exit(1);
-            return default!; // unreachable
+            return default!;
         }
     }
 }

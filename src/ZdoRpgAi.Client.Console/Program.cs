@@ -4,11 +4,11 @@ using ZdoRpgAi.Core;
 using ZdoRpgAi.Util;
 
 var parser = new CommandLineArgsParser("Zdo RPG AI Client", BuildInfo.Version);
-parser.Add("-c", "--config", "Path to JSON config file", defaultValue: "config.json");
+parser.Add("-c", "--config", "Path to YAML config file", defaultValue: "config.yaml");
 
 var parsed = parser.Parse(args);
 var configPath = parsed.Get("--config")!;
-var config = ConfigParser.FromFile(configPath, ClientConfigJsonContext.Default.ClientConfig);
+var config = ConfigParser.ParseYamlFile(configPath, ClientConfigJsonContext.Default.ClientConfig);
 
 ClientBootstrap.ResolvePaths(config, configPath);
 Logger.Configure(config.Log);
