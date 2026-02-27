@@ -1,4 +1,7 @@
+using ZdoRpgAi.Database;
+using ZdoRpgAi.Repository;
 using ZdoRpgAi.Server.App;
+using ZdoRpgAi.Server.Http;
 using ZdoRpgAi.Server.Llm;
 using ZdoRpgAi.Server.Llm.Gemini;
 using ZdoRpgAi.Server.Lua;
@@ -11,12 +14,20 @@ namespace ZdoRpgAi.Server.Bootstrap;
 
 public static class ServerBootstrap {
     public static ServerApplication Create(ServerConfig config) {
+        var mainDb = new MainDatabase(config.Database.MainDbPath);
+        mainDb.Open();
+        var saveGameDb = new SaveGameDatabase(config.Database.SaveGameDbPath);
+        saveGameDb.Open();
+
+        var mainRepo = new LocalDatabaseMainRepository(mainDb);
+        var saveGameRepo = new LocalDatabaseSaveGameRepository(saveGameDb);
         var tts = CreateTts(config.Tts);
         var stt = CreateStt(config.Stt);
         var llm = CreateLlm(config.Llm);
         var lua = new LuaSandbox();
+        var httpServer = new HttpServer(config.HttpServer);
 
-        return new ServerApplication(tts, stt, llm, lua);
+        return new ServerApplication(mainRepo, saveGameRepo, tts, stt, llm, lua, httpServer, mainDb, saveGameDb);
     }
 
     private static ITextToSpeech CreateTts(TtsSection config) => config.Provider switch {
