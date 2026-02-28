@@ -59,15 +59,19 @@ public class ClientApplication : IDisposable {
                 break;
             case nameof(ServerToModMessageType.SpeechRecognitionInProgress): {
                     var p = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.SpeechRecognitionInProgressPayload);
-                    if (p != null)
+                    if (p != null) {
                         Log.Debug("Speech recognition interim: '{Text}'", p.Text);
+                    }
+
                     _bridge.SendMessageToMod(msg);
                     break;
                 }
             case nameof(ServerToModMessageType.SpeechRecognitionComplete): {
                     var p = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.SpeechRecognitionCompletePayload);
-                    if (p != null)
+                    if (p != null) {
                         Log.Info("Speech recognition final: '{Text}'", p.Text);
+                    }
+
                     _bridge.SendMessageToMod(msg);
                     break;
                 }
@@ -78,10 +82,14 @@ public class ClientApplication : IDisposable {
     }
 
     private void HandleNpcSpeaksMp3(Message msg) {
-        if (msg.Binary == null || msg.Json == null) return;
+        if (msg.Binary == null || msg.Json == null) {
+            return;
+        }
 
         var payload = msg.Json.DeserializeSafe(PayloadJsonContext.Default.NpcSpeaksMp3Payload);
-        if (payload == null) return;
+        if (payload == null) {
+            return;
+        }
 
         var mp3Name = _mp3.SaveMp3(msg.Binary);
         Log.Info("NPC {NpcId} speaks: '{Text}' (audio: {Mp3Name}, duration: {Duration:F1}s)",
@@ -109,15 +117,18 @@ public class ClientApplication : IDisposable {
                     var e = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.TargetChangedPayload);
                     if (e != null) {
                         _lastTargetNpcId = e.NpcId;
-                        if (_lastTargetNpcId != null)
+                        if (_lastTargetNpcId != null) {
                             Log.Debug("Target NPC: {NpcId}", _lastTargetNpcId);
+                        }
                     }
                     break;
                 }
             case nameof(ModToServerMessageType.CellChange): {
                     var e = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.CellChangePayload);
-                    if (e != null)
+                    if (e != null) {
                         Log.Info("Cell: {CellName}", e.CellName);
+                    }
+
                     break;
                 }
         }
@@ -146,7 +157,10 @@ public class ClientApplication : IDisposable {
     }
 
     private Task HandleMicAudioBufferAsync(byte[] pcmBytes) {
-        if (!_bridge.IsServerConnected) return Task.CompletedTask;
+        if (!_bridge.IsServerConnected) {
+            return Task.CompletedTask;
+        }
+
         var payload = new PlayerSpeaksAudioPayload(_localPlayerId ?? "player");
         var data = JsonExtensions.SerializeToObject(payload, PayloadJsonContext.Default.PlayerSpeaksAudioPayload);
         _bridge.SendMessageToServer(new Message(nameof(ClientToServerMessageType.PlayerSpeaksAudio), 0, null, data, pcmBytes));

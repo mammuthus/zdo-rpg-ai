@@ -111,7 +111,10 @@ public class ClientChannelBridge : IDisposable {
     }
 
     private static void TrimNat(Dictionary<int, int> nat) {
-        if (nat.Count <= 1000) return;
+        if (nat.Count <= 1000) {
+            return;
+        }
+
         var oldest = nat.Keys.Order().Take(nat.Count - 1000).ToList();
         foreach (var key in oldest) {
             nat.Remove(key);

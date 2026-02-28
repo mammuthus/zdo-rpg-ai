@@ -53,8 +53,9 @@ public class ServerApplication : IDisposable {
 
         rpc.Disconnected += () => {
             lock (_lock) {
-                if (_activeRpc == rpc)
+                if (_activeRpc == rpc) {
                     _activeRpc = null;
+                }
             }
             _game.SetActiveClient(null);
         };

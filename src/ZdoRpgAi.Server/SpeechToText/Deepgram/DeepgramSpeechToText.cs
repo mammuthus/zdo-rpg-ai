@@ -107,7 +107,10 @@ public class DeepgramSpeechToText : ISpeechToText {
     public void Cancel() {
         CancellationTokenSource? cts;
         lock (_lock) {
-            if (_sessionTask == null) return;
+            if (_sessionTask == null) {
+                return;
+            }
+
             cts = _sessionCts;
         }
 
@@ -224,7 +227,9 @@ public class DeepgramSpeechToText : ISpeechToText {
     private void ProcessMessage(string json) {
         try {
             var node = JsonNode.Parse(json);
-            if (node == null) return;
+            if (node == null) {
+                return;
+            }
 
             var type = node["type"]?.GetValue<string>();
             if (type != "Results") {
@@ -233,10 +238,14 @@ public class DeepgramSpeechToText : ISpeechToText {
             }
 
             var result = node.Deserialize(DeepgramJsonContext.Default.DeepgramResult);
-            if (result?.Channel?.Alternatives is not { Length: > 0 }) return;
+            if (result?.Channel?.Alternatives is not { Length: > 0 }) {
+                return;
+            }
 
             var transcript = result.Channel.Alternatives[0].Transcript;
-            if (string.IsNullOrEmpty(transcript)) return;
+            if (string.IsNullOrEmpty(transcript)) {
+                return;
+            }
 
             if (result.IsFinal) {
                 _accumulatedTranscript += " " + transcript;
@@ -256,8 +265,9 @@ public class DeepgramSpeechToText : ISpeechToText {
 
     private static async Task SendAudioAsync(ClientWebSocket ws, ReadOnlyMemory<byte> buffer) {
         try {
-            if (ws.State == WebSocketState.Open)
+            if (ws.State == WebSocketState.Open) {
                 await ws.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
+            }
         }
         catch (WebSocketException ex) {
             Log.Warn("SendAudio failed: {Error}", ex.Message);
@@ -280,15 +290,19 @@ public class DeepgramSpeechToText : ISpeechToText {
     private void CleanupWebSocket() {
         var ws = _ws;
         _ws = null;
-        if (ws == null) return;
+        if (ws == null) {
+            return;
+        }
 
         Log.Trace("Cleaning up WebSocket (state={State})", (object)ws.State);
         try {
-            if (ws.State == WebSocketState.Open)
+            if (ws.State == WebSocketState.Open) {
                 ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None)
                     .ContinueWith(_ => ws.Dispose());
-            else
+            }
+            else {
                 ws.Dispose();
+            }
         }
         catch {
             ws.Dispose();

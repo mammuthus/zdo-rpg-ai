@@ -61,7 +61,9 @@ public class PlayerMessageHandler {
 
     private void HandlePlayerStartSpeak(Message msg) {
         var payload = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.PlayerStartSpeakPayload);
-        if (payload == null) return;
+        if (payload == null) {
+            return;
+        }
 
         if (_activeSession != null) {
             Log.Warn("Player {PlayerId} started speaking while a session is already active, ignoring",
@@ -93,7 +95,9 @@ public class PlayerMessageHandler {
         }
 
         var payload = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.PlayerStopSpeakPayload);
-        if (payload == null) return;
+        if (payload == null) {
+            return;
+        }
 
         if (payload.Cancel) {
             Log.Info("Player {PlayerId} cancelled speaking", payload.PlayerId);
@@ -171,7 +175,9 @@ public class PlayerMessageHandler {
 
     private async Task HandlePlayerSpeaksTextAsync(Message msg) {
         var payload = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.PlayerSpeaksTextPayload);
-        if (payload == null) return;
+        if (payload == null) {
+            return;
+        }
 
         var client = _client;
         if (client == null) {

@@ -55,19 +55,24 @@ public static class Logger {
     }
 
     private static void RotateLogs(string filePath, int maxFiles) {
-        if (!File.Exists(filePath)) return;
+        if (!File.Exists(filePath)) {
+            return;
+        }
 
         var dir = Path.GetDirectoryName(filePath)!;
         var name = Path.GetFileNameWithoutExtension(filePath);
         var ext = Path.GetExtension(filePath);
 
         var oldest = Path.Combine(dir, $"{name}.{maxFiles - 1}{ext}");
-        if (File.Exists(oldest)) File.Delete(oldest);
+        if (File.Exists(oldest)) {
+            File.Delete(oldest);
+        }
 
         for (var i = maxFiles - 2; i >= 0; i--) {
             var src = Path.Combine(dir, $"{name}.{i}{ext}");
-            if (File.Exists(src))
+            if (File.Exists(src)) {
                 File.Move(src, Path.Combine(dir, $"{name}.{i + 1}{ext}"));
+            }
         }
 
         File.Move(filePath, Path.Combine(dir, $"{name}.0{ext}"));

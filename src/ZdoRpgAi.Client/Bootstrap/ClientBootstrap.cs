@@ -12,8 +12,9 @@ public static class ClientBootstrap {
         var baseDir = Path.GetDirectoryName(Path.GetFullPath(configPath))!;
         config.Mod.DataDir = ExpandPath(config.Mod.DataDir, baseDir);
         config.Mod.LogFilePath = ExpandPath(config.Mod.LogFilePath, baseDir);
-        if (config.Log.FilePath != null)
+        if (config.Log.FilePath != null) {
             config.Log.FilePath = ExpandPath(config.Log.FilePath, baseDir);
+        }
     }
 
     public static ClientApplication Create(ClientConfig config) {
@@ -34,8 +35,10 @@ public static class ClientBootstrap {
     }
 
     private static string ExpandPath(string path, string baseDir) {
-        if (path.StartsWith('~'))
+        if (path.StartsWith('~')) {
             path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[1..].TrimStart('/'));
+        }
+
         return Path.GetFullPath(path, baseDir);
     }
 }

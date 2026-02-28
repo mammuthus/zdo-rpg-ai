@@ -144,7 +144,10 @@ public class OpenAiLlm : ILlm {
                     };
                     if (p.EnumValues is { Count: > 0 }) {
                         var enumArr = new JsonArray();
-                        foreach (var v in p.EnumValues) enumArr.AddNode(JsonValue.Create(v)!);
+                        foreach (var v in p.EnumValues) {
+                            enumArr.AddNode(JsonValue.Create(v)!);
+                        }
+
                         paramObj["enum"] = enumArr;
                     }
                     props[p.Name] = paramObj;
@@ -192,7 +195,10 @@ public class OpenAiLlm : ILlm {
         if (toolCallsNode != null) {
             toolCalls = [];
             foreach (var tc in toolCallsNode.AsArray()) {
-                if (tc == null) continue;
+                if (tc == null) {
+                    continue;
+                }
+
                 var fn = tc["function"]!;
                 var args = new Dictionary<string, object?>();
                 var argsStr = fn["arguments"]?.GetValue<string>();

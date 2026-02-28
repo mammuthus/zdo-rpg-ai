@@ -92,7 +92,9 @@ public class VoiceCaptureService : IDisposable {
 
     private void HandleFrameCaptured(ReadOnlyMemory<byte> frame) {
         // Only enqueue audio when active
-        if (!_isActive) return;
+        if (!_isActive) {
+            return;
+        }
 
         _activeFrameCount++;
         if (frame.Span.IndexOfAnyExcept((byte)0) < 0) {
@@ -125,10 +127,12 @@ public class VoiceCaptureService : IDisposable {
         }
         else {
             // Toggle mode
-            if (_isActive)
+            if (_isActive) {
                 Deactivate();
-            else
+            }
+            else {
                 Activate();
+            }
         }
     }
 
@@ -165,7 +169,10 @@ public class VoiceCaptureService : IDisposable {
     // --- Activation ---
 
     private void Activate() {
-        if (_isActive) return;
+        if (_isActive) {
+            return;
+        }
+
         _capture.CheckSampleRate();
         _activeFrameCount = 0;
         _activeZeroFrameCount = 0;
@@ -175,7 +182,10 @@ public class VoiceCaptureService : IDisposable {
     }
 
     private void Deactivate() {
-        if (!_isActive) return;
+        if (!_isActive) {
+            return;
+        }
+
         _isActive = false;
         if (_activeFrameCount > 0 && _activeFrameCount == _activeZeroFrameCount) {
             Log.Warn("All {Count} mic frames were silent (all zeroes). Check macOS microphone permissions for your terminal app (System Settings > Privacy & Security > Microphone)", _activeFrameCount);

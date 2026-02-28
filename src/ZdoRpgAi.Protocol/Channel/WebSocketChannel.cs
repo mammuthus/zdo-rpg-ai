@@ -76,7 +76,9 @@ public class WebSocketChannel : IChannel {
                 if (result.MessageType == WebSocketMessageType.Text) {
                     var json = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
                     var obj = JsonNode.Parse(json)?.AsObject();
-                    if (obj == null) continue;
+                    if (obj == null) {
+                        continue;
+                    }
 
                     var msg = Message.FromJson(obj, null);
                     Log.Trace("RECV {Type}: {Json}", msg.Type, json);

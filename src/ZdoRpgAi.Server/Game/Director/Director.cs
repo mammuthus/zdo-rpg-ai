@@ -18,8 +18,9 @@ public class Director {
 
     public void SetClient(IRpcChannel? client) {
         foreach (var strategy in _strategies) {
-            if (strategy is SimpleReactiveStrategy reactive)
+            if (strategy is SimpleReactiveStrategy reactive) {
                 reactive.SetClient(client);
+            }
         }
     }
 
@@ -29,7 +30,9 @@ public class Director {
 
     private async Task ProcessStoryEventAsync(StoryEvent evt) {
         var strategy = DetermineStrategy(evt);
-        if (strategy == null) return;
+        if (strategy == null) {
+            return;
+        }
 
         try {
             await strategy.ProcessStoryEventAsync(evt);

@@ -111,11 +111,18 @@ public class OpenmwModChannel : IChannel {
     }
 
     private bool TryReadHandshakeAck(string sessionId) {
-        if (!File.Exists(_logFilePath)) return false;
+        if (!File.Exists(_logFilePath)) {
+            return false;
+        }
 
         var fileInfo = new FileInfo(_logFilePath);
-        if (fileInfo.Length < _logPosition) _logPosition = 0;
-        if (fileInfo.Length == _logPosition) return false;
+        if (fileInfo.Length < _logPosition) {
+            _logPosition = 0;
+        }
+
+        if (fileInfo.Length == _logPosition) {
+            return false;
+        }
 
         string newContent;
         try {
@@ -129,7 +136,9 @@ public class OpenmwModChannel : IChannel {
             return false;
         }
 
-        if (string.IsNullOrEmpty(newContent)) return false;
+        if (string.IsNullOrEmpty(newContent)) {
+            return false;
+        }
 
         foreach (var line in newContent.Split('\n')) {
             var ackIdx = line.IndexOf(AckPrefix, StringComparison.Ordinal);
@@ -141,7 +150,9 @@ public class OpenmwModChannel : IChannel {
             }
 
             var msgIdx = line.IndexOf(MsgPrefix, StringComparison.Ordinal);
-            if (msgIdx < 0) continue;
+            if (msgIdx < 0) {
+                continue;
+            }
 
             var jsonStr = line[(msgIdx + MsgPrefix.Length)..];
             JsonObject? obj;
@@ -151,13 +162,19 @@ public class OpenmwModChannel : IChannel {
             catch {
                 continue;
             }
-            if (obj == null) continue;
+            if (obj == null) {
+                continue;
+            }
 
             var type = obj["type"]?.GetValue<string>();
-            if (type != "StartSessionAck") continue;
+            if (type != "StartSessionAck") {
+                continue;
+            }
 
             var ackSessionId = obj["data"]?["sessionId"]?.GetValue<string>();
-            if (ackSessionId != sessionId) continue;
+            if (ackSessionId != sessionId) {
+                continue;
+            }
 
             var msgId = obj["id"]?.GetValue<int>() ?? 0;
             if (msgId > _lastSeenModMsgId) {
@@ -189,7 +206,9 @@ public class OpenmwModChannel : IChannel {
     }
 
     private void ReadLogLines() {
-        if (!File.Exists(_logFilePath)) return;
+        if (!File.Exists(_logFilePath)) {
+            return;
+        }
 
         var fileInfo = new FileInfo(_logFilePath);
 
@@ -198,7 +217,9 @@ public class OpenmwModChannel : IChannel {
             _logPosition = 0;
         }
 
-        if (fileInfo.Length == _logPosition) return;
+        if (fileInfo.Length == _logPosition) {
+            return;
+        }
 
         string newContent;
         try {
@@ -212,7 +233,9 @@ public class OpenmwModChannel : IChannel {
             return;
         }
 
-        if (string.IsNullOrEmpty(newContent)) return;
+        if (string.IsNullOrEmpty(newContent)) {
+            return;
+        }
 
         var ackedSomething = false;
         foreach (var line in newContent.Split('\n')) {
@@ -253,10 +276,15 @@ public class OpenmwModChannel : IChannel {
             Log.Warn("Failed to parse mod message JSON: {Json}", jsonStr);
             return;
         }
-        if (obj == null) return;
+        if (obj == null) {
+            return;
+        }
 
         var msgId = obj["id"]?.GetValue<int>() ?? 0;
-        if (msgId > 0 && msgId <= _lastSeenModMsgId) return;
+        if (msgId > 0 && msgId <= _lastSeenModMsgId) {
+            return;
+        }
+
         if (msgId > _lastSeenModMsgId) {
             _lastSeenModMsgId = msgId;
             _lastProcessedModMsgId = msgId;

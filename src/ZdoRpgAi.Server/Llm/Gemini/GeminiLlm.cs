@@ -145,7 +145,10 @@ public class GeminiLlm : ILlm {
                     };
                     if (p.EnumValues is { Count: > 0 }) {
                         var enumArr = new JsonArray();
-                        foreach (var v in p.EnumValues) enumArr.AddNode(JsonValue.Create(v)!);
+                        foreach (var v in p.EnumValues) {
+                            enumArr.AddNode(JsonValue.Create(v)!);
+                        }
+
                         paramObj["enum"] = enumArr;
                     }
                     props[p.Name] = paramObj;

@@ -26,7 +26,10 @@ public class SimpleReactiveStrategy : IDirectorStrategy {
     }
 
     public async Task ProcessStoryEventAsync(StoryEvent evt) {
-        if (evt is not StoryEvent.PlayerSpeak playerSpeak) return;
+        if (evt is not StoryEvent.PlayerSpeak playerSpeak) {
+            return;
+        }
+
         await HandlePlayerSpeakAsync(playerSpeak);
     }
 

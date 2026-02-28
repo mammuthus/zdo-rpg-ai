@@ -7,10 +7,14 @@ public record Message(string Type, int Id, int? ResponseTo, JsonObject? Json, by
         var obj = new JsonObject();
         obj["id"] = Id;
         obj["type"] = Type;
-        if (ResponseTo.HasValue)
+        if (ResponseTo.HasValue) {
             obj["responseTo"] = ResponseTo.Value;
-        if (Json != null)
+        }
+
+        if (Json != null) {
             obj["data"] = Json;
+        }
+
         return obj;
     }
 

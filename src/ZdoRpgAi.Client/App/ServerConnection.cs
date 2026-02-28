@@ -41,8 +41,10 @@ public class ServerConnection : IDisposable {
             try {
                 Log.Info("Connecting to server at {Uri}", _uri);
                 using var ws = new ClientWebSocket();
-                if (_clientToken.Length > 0)
+                if (_clientToken.Length > 0) {
                     ws.Options.SetRequestHeader("X-ZdoRpgAi-Client", _clientToken);
+                }
+
                 await ws.ConnectAsync(new Uri(_uri), linked.Token);
                 Log.Info("Connected to server");
 

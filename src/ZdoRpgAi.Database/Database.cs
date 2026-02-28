@@ -42,12 +42,14 @@ public abstract class Database : IDisposable {
         cmd.CommandText = "SELECT value FROM meta WHERE key = 'dbtype'";
         var result = cmd.ExecuteScalar();
 
-        if (result is not string dbType)
+        if (result is not string dbType) {
             throw new InvalidOperationException("Database is missing 'dbtype' in meta table");
+        }
 
-        if (dbType != DbType)
+        if (dbType != DbType) {
             throw new InvalidOperationException(
                 $"Database type mismatch: expected '{DbType}', got '{dbType}'");
+        }
     }
 
     private static bool IsNewDatabase(SqliteConnection conn) {

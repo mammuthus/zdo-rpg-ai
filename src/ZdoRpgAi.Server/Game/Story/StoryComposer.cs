@@ -38,7 +38,10 @@ public class StoryComposer {
         switch (msg.Type) {
             case nameof(ClientToServerMessageType.PlayerSpeaksText): {
                     var payload = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.PlayerSpeaksTextPayload);
-                    if (payload == null) return;
+                    if (payload == null) {
+                        return;
+                    }
+
                     OnPlayerSpeak(payload.PlayerId, payload.TargetCharacterId, payload.GameTime, payload.Text);
                     break;
                 }

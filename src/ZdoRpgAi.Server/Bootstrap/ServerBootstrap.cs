@@ -23,8 +23,9 @@ public static class ServerBootstrap {
         var baseDir = Path.GetDirectoryName(Path.GetFullPath(configPath))!;
         config.Database.MainDbPath = ExpandPath(config.Database.MainDbPath, baseDir);
         config.Database.SaveGameDbPath = ExpandPath(config.Database.SaveGameDbPath, baseDir);
-        if (config.Log.FilePath != null)
+        if (config.Log.FilePath != null) {
             config.Log.FilePath = ExpandPath(config.Log.FilePath, baseDir);
+        }
     }
 
     public static ServerApplication Create(ServerConfig config) {
@@ -43,38 +44,40 @@ public static class ServerBootstrap {
     private static ITextToSpeech CreateTts(TtsSection config) {
         Log.Info("Creating text-to-speech: {Provider}", config.Provider);
         return config.Provider switch {
-        "dummy" => new DummyTextToSpeech(),
-        "elevenlabs" => new ElevenLabsTextToSpeech(config.ElevenLabs
-            ?? throw new InvalidOperationException("tts.elevenLabs config is required when provider is 'elevenlabs'")),
-        _ => throw new InvalidOperationException($"Unknown TTS provider: {config.Provider}"),
-    };
+            "dummy" => new DummyTextToSpeech(),
+            "elevenlabs" => new ElevenLabsTextToSpeech(config.ElevenLabs
+                ?? throw new InvalidOperationException("tts.elevenLabs config is required when provider is 'elevenlabs'")),
+            _ => throw new InvalidOperationException($"Unknown TTS provider: {config.Provider}"),
+        };
     }
 
     private static ISpeechToText CreateStt(SttSection config) {
         Log.Info("Creating speech-to-text: {Provider}", config.Provider);
         return config.Provider switch {
-        "dummy" => new DummySpeechToText(),
-        "deepgram" => new DeepgramSpeechToText(config.Deepgram
-            ?? throw new InvalidOperationException("stt.deepgram config is required when provider is 'deepgram'")),
-        _ => throw new InvalidOperationException($"Unknown STT provider: {config.Provider}"),
-    };
+            "dummy" => new DummySpeechToText(),
+            "deepgram" => new DeepgramSpeechToText(config.Deepgram
+                ?? throw new InvalidOperationException("stt.deepgram config is required when provider is 'deepgram'")),
+            _ => throw new InvalidOperationException($"Unknown STT provider: {config.Provider}"),
+        };
     }
 
     private static ILlm CreateLlm(string role, LlmProviderSection config) {
         Log.Info("Creating {Role} LLM: {Provider}", role, config.Provider);
         return config.Provider switch {
-        "dummy" => new DummyLlm(),
-        "gemini" => new GeminiLlm(config.Gemini
-            ?? throw new InvalidOperationException("llm.gemini config is required when provider is 'gemini'")),
-        "openai" => new OpenAiLlm(config.OpenAi
-            ?? throw new InvalidOperationException("llm.openAi config is required when provider is 'openai'")),
-        _ => throw new InvalidOperationException($"Unknown LLM provider: {config.Provider}"),
-    };
+            "dummy" => new DummyLlm(),
+            "gemini" => new GeminiLlm(config.Gemini
+                ?? throw new InvalidOperationException("llm.gemini config is required when provider is 'gemini'")),
+            "openai" => new OpenAiLlm(config.OpenAi
+                ?? throw new InvalidOperationException("llm.openAi config is required when provider is 'openai'")),
+            _ => throw new InvalidOperationException($"Unknown LLM provider: {config.Provider}"),
+        };
     }
 
     private static string ExpandPath(string path, string baseDir) {
-        if (path.StartsWith('~'))
+        if (path.StartsWith('~')) {
             path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[1..].TrimStart('/'));
+        }
+
         return Path.GetFullPath(path, baseDir);
     }
 }

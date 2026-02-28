@@ -72,7 +72,10 @@ public class CommandLineArgsParser {
 
         // Apply defaults for unmatched args
         foreach (var def in _args) {
-            if (matched.Contains(def.LongName)) continue;
+            if (matched.Contains(def.LongName)) {
+                continue;
+            }
+
             if (def.DefaultValue != null) {
                 values[def.LongName] = def.DefaultValue;
             }
@@ -83,7 +86,9 @@ public class CommandLineArgsParser {
 
     private ArgDef? FindDef(string key) {
         foreach (var def in _args) {
-            if (def.LongName == key || def.ShortName == key) return def;
+            if (def.LongName == key || def.ShortName == key) {
+                return def;
+            }
         }
         return null;
     }
@@ -100,13 +105,18 @@ public class CommandLineArgsParser {
         foreach (var def in _args) {
             var names = def.ShortName != null ? $"{def.ShortName}, {def.LongName}" : $"    {def.LongName}";
             var desc = def.Description;
-            if (def.DefaultValue != null) desc += $" (default: {def.DefaultValue})";
+            if (def.DefaultValue != null) {
+                desc += $" (default: {def.DefaultValue})";
+            }
+
             entries.Add((names, desc));
         }
 
         var maxNames = 0;
         foreach (var e in entries) {
-            if (e.names.Length > maxNames) maxNames = e.names.Length;
+            if (e.names.Length > maxNames) {
+                maxNames = e.names.Length;
+            }
         }
 
         foreach (var (names, desc) in entries) {

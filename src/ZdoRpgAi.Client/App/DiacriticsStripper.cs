@@ -28,17 +28,22 @@ public static class DiacriticsStripper {
     public static string Strip(string text) {
         var sb = new StringBuilder(text.Length);
         foreach (var c in text) {
-            if (ExtraReplacements.TryGetValue(c, out var replacement))
+            if (ExtraReplacements.TryGetValue(c, out var replacement)) {
                 sb.Append(replacement);
-            else
+            }
+            else {
                 sb.Append(c);
+            }
         }
 
         var normalized = sb.ToString().Normalize(NormalizationForm.FormD);
         sb.Clear();
-        foreach (var c in normalized)
-            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+        foreach (var c in normalized) {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark) {
                 sb.Append(c);
+            }
+        }
+
         return sb.ToString().Normalize(NormalizationForm.FormC);
     }
 }

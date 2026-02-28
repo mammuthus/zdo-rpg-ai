@@ -25,8 +25,9 @@ public class ElevenLabsTextToSpeech : ITextToSpeech {
     }
 
     public async Task<Mp3Data> GenerateAsync(string text, IVoiceInfo voiceInfo) {
-        if (voiceInfo is not ElevenLabsVoiceInfo elevenVoice)
+        if (voiceInfo is not ElevenLabsVoiceInfo elevenVoice) {
             throw new ArgumentException($"Expected {nameof(ElevenLabsVoiceInfo)}, got {voiceInfo.GetType().Name}");
+        }
 
         var url = $"https://api.elevenlabs.io/v1/text-to-speech/{elevenVoice.VoiceId}";
 

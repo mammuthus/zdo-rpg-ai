@@ -52,7 +52,8 @@ public class PortAudioMicrophoneListener : IMicrophoneListener {
             _needsResample = true;
             Log.Info("Will capture at {CaptureRate}Hz and resample to {TargetRate}Hz",
                 _captureRate, _targetRate);
-        } else {
+        }
+        else {
             _captureRate = _targetRate;
             _captureFrameSamples = _targetFrameSamples;
             _needsResample = false;
@@ -99,7 +100,8 @@ public class PortAudioMicrophoneListener : IMicrophoneListener {
         if (_needsResample) {
             var resampled = Resample(buffer, (int)frameCount, _targetFrameSamples);
             FrameCaptured.Invoke(resampled);
-        } else {
+        }
+        else {
             FrameCaptured.Invoke(buffer);
         }
 
@@ -122,7 +124,8 @@ public class PortAudioMicrophoneListener : IMicrophoneListener {
             short s1;
             if (srcIdx + 1 < sourceSamples) {
                 s1 = (short)(source[(srcIdx + 1) * 2] | (source[(srcIdx + 1) * 2 + 1] << 8));
-            } else {
+            }
+            else {
                 s1 = s0;
             }
 
@@ -136,7 +139,10 @@ public class PortAudioMicrophoneListener : IMicrophoneListener {
 
     public void CheckSampleRate() {
         var deviceIdx = _deviceIndex >= 0 ? _deviceIndex : PortAudio.DefaultInputDevice;
-        if (deviceIdx < 0) return;
+        if (deviceIdx < 0) {
+            return;
+        }
+
         var currentRate = (int)PortAudio.GetDeviceInfo(deviceIdx).defaultSampleRate;
         if (currentRate != _captureRate) {
             Log.Warn("Device sample rate changed from {CaptureRate}Hz to {CurrentRate}Hz since stream was opened. " +
