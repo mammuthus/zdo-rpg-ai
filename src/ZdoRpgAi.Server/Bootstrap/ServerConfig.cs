@@ -39,6 +39,11 @@ public class SttSection {
 }
 
 public class LlmSection {
+    public required LlmProviderSection Main { get; set; }
+    public required LlmProviderSection Simple { get; set; }
+}
+
+public class LlmProviderSection {
     public required string Provider { get; set; }
     public GeminiConfig? Gemini { get; set; }
     public OpenAiConfig? OpenAi { get; set; }

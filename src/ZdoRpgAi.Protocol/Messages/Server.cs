@@ -26,7 +26,7 @@ public enum ServerToModMessageType {
     ShowMessageBox,
 }
 
-public record NpcSpeaksPayload();
+public record NpcSpeaksPayload(string NpcId, string Text);
 public record SpeechRecognitionInProgressPayload(string PlayerId, string Text);
 public record SpeechRecognitionCompletePayload(string PlayerId, string Text);
 public record GetCharactersWhoHearRequestPayload(string CharacterId);

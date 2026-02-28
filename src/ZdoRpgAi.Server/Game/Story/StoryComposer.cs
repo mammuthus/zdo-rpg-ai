@@ -2,7 +2,6 @@ using ZdoRpgAi.Core;
 using ZdoRpgAi.Protocol.Channel;
 using ZdoRpgAi.Protocol.Messages;
 using ZdoRpgAi.Protocol.Rpc;
-using ZdoRpgAi.Repository;
 
 namespace ZdoRpgAi.Server.Game.Story;
 
@@ -12,8 +11,8 @@ public class StoryComposer {
     private readonly Story _story;
     private IRpcChannel? _client;
 
-    public StoryComposer(ISaveGameRepository saveGameRepo) {
-        _story = new Story(saveGameRepo);
+    public StoryComposer(Story story) {
+        _story = story;
     }
 
     public void OnClientConnected(IRpcChannel client) {

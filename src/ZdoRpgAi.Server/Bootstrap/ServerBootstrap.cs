@@ -32,11 +32,12 @@ public static class ServerBootstrap {
         var saveGameRepo = new LocalDatabaseSaveGameRepository(config.Database.SaveGameDbPath);
         var tts = CreateTts(config.Tts);
         var stt = CreateStt(config.Stt);
-        var llm = CreateLlm(config.Llm);
+        var mainLlm = CreateLlm("main", config.Llm.Main);
+        var simpleLlm = CreateLlm("simple", config.Llm.Simple);
         var lua = new LuaSandbox();
         var httpServer = new HttpServer(config.HttpServer);
 
-        return new ServerApplication(mainRepo, saveGameRepo, tts, stt, llm, lua, httpServer);
+        return new ServerApplication(mainRepo, saveGameRepo, tts, stt, mainLlm, simpleLlm, lua, httpServer);
     }
 
     private static ITextToSpeech CreateTts(TtsSection config) {
@@ -59,8 +60,8 @@ public static class ServerBootstrap {
     };
     }
 
-    private static ILlm CreateLlm(LlmSection config) {
-        Log.Info("Creating LLM: {Provider}", config.Provider);
+    private static ILlm CreateLlm(string role, LlmProviderSection config) {
+        Log.Info("Creating {Role} LLM: {Provider}", role, config.Provider);
         return config.Provider switch {
         "dummy" => new DummyLlm(),
         "gemini" => new GeminiLlm(config.Gemini

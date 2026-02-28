@@ -13,11 +13,15 @@ public class Story {
         _saveGameRepo = saveGameRepo;
     }
 
+    public event Action<StoryEvent>? EventRegistered;
+
     public StoryEvent RegisterEvent(StoryEvent evt) {
         var type = evt.GetType().Name;
         var dataJson = JsonSerializer.Serialize(evt, StoryEventJsonContext.Default.StoryEvent);
         var id = _saveGameRepo.AddStoryEvent(evt.GameTime, evt.RealTime, type, dataJson);
         Log.Info("Registered story event #{Id}: {Type}", id, type);
-        return evt with { Id = id };
+        var registered = evt with { Id = id };
+        EventRegistered?.Invoke(registered);
+        return registered;
     }
 }
