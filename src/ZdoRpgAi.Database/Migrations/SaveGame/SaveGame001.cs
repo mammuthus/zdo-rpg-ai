@@ -4,26 +4,41 @@ namespace ZdoRpgAi.Database.Migrations.SaveGame;
 
 public class SaveGame001 : IMigration {
     public void Before(SqliteConnection conn) {
-        conn.Execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
-        conn.Execute("INSERT OR IGNORE INTO meta (key, value) VALUES ('dbtype', 'savegame')");
+        conn.Execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+        conn.Execute("INSERT meta (key, value) VALUES ('dbtype', 'savegame')");
     }
 
     public string GetSql() => """
-        CREATE TABLE IF NOT EXISTS player (
+        CREATE TABLE player (
             id TEXT PRIMARY KEY,
-            data JSONB NOT NULL
+            dataJson TEXT NOT NULL,
         );
 
-        CREATE TABLE IF NOT EXISTS npc_new (
+        CREATE TABLE npc_new (
             id TEXT PRIMARY KEY,
-            data JSONB NOT NULL
+            dataJson TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS npc_attribute_value_new (
+        CREATE TABLE npc_attribute_value_new (
             npcId TEXT NOT NULL,
             attributeId TEXT NOT NULL,
-            data JSONB NOT NULL,
+            dataJson TEXT NOT NULL,
             PRIMARY KEY (npcId, attributeId)
+        );
+
+        CREATE TABLE conversation_entry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            speakerCharacterId TEXT NOT NULL,
+            targetCharacterId TEXT,
+            createdAtGameTime TEXT NOT NULL,
+            createdAtRealTime TEXT NOT NULL,
+            type TEXT NOT NULL,
+            dataJson TEXT NOT NULL
+        );
+
+        CREATE TABLE conversation_entry_listener (
+            entryId INTEGER NOT NULL,
+            listenerCharacterId TEXT NOT NULL
         );
         """;
 }
