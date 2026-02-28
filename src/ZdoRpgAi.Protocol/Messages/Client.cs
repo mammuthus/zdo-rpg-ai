@@ -22,7 +22,7 @@ public enum ClientToBothMessageType {
 }
 
 public record PlayerStartSpeakPayload(string PlayerId, string? TargetCharacterId, string GameTime);
-public record PlayerStopSpeakPayload(string PlayerId);
+public record PlayerStopSpeakPayload(string PlayerId, bool Cancel = false);
 
 // Client → Server
 

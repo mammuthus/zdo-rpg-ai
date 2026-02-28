@@ -2,7 +2,7 @@
 
 - **Events**: Use past tense verb without `On` prefix (e.g. `Disconnected`, `MessageReceived`, `KeyPressed`). The `On` prefix is reserved for the method that raises the event.
 - **Async methods**: Suffix with `Async` for methods returning `Task`/`Task<T>` (e.g. `RunAsync`).
-- **Logging**: Use `ZdoRpgAi.Core.ILog` via `Logger.Get<T>()`. Method names: `Trace`, `Debug`, `Info`, `Warn`, `Error`. Do not reference Serilog directly outside of Core.
+- **Logging**: Use `ZdoRpgAi.Core.ILog` via `Logger.Get<T>()`. Method names: `Trace`, `Debug`, `Info`, `Warn`, `Error`. Do not reference Serilog directly outside of Core. Prefer logging a warning over silently returning early — if a guard clause skips work due to unexpected state, log `Warn` so the issue is visible.
 - **No XML doc comments** (`<summary>`) unless they add value beyond what the name already communicates.
 - **Native AOT**: Do not use features or libraries that are incompatible with native AOT compilation (e.g. unconstrained reflection, `dynamic`, non-trimming-safe APIs).
 - **Repository methods**: Accept and return typed model classes, not raw JSON strings. JSON serialization/deserialization is the repository implementation's responsibility.
@@ -30,5 +30,5 @@ Messages flow between three parties: **Server**, **Client**, and **Mod** (OpenMW
 
 - **One-way (fire-and-forget):** `rpc.Publish(type, payload)` — no response expected.
 - **Request-response:** `rpc.CallAsync(type, payload)` — awaits a response. The other side uses `rpc.Respond(type, responseTo, payload)`.
-- **Serialization:** Use `JsonSerializer.SerializeToNode(payload, PayloadJsonContext.Default.PayloadType) as JsonObject` to create payloads. Use `msg.Json?.Deserialize(PayloadJsonContext.Default.PayloadType)` to read them.
+- **Serialization:** Use `JsonSerializer.SerializeToNode(payload, PayloadJsonContext.Default.PayloadType) as JsonObject` to create payloads. Use `msg.Json?.DeserializeSafe(PayloadJsonContext.Default.PayloadType)` to read them — this logs an error on failure instead of silently returning null.
 - **Message routing:** Match on `msg.Type` using `nameof(MessageTypeEnum.Value)`.

@@ -1,9 +1,11 @@
 namespace ZdoRpgAi.Server.SpeechToText;
 
 public interface ISpeechToText : IDisposable {
-    Task StartSessionAsync(CancellationToken ct = default);
-    Task FeedAudioAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct = default);
-    Task<string?> FinishSessionAsync(CancellationToken ct = default);
+    void Start();
+    void FeedAudio(ReadOnlyMemory<byte> buffer);
+    void Finish();
+    void Cancel();
 
     event Action<string> InterimResultReceived;
+    event Action<string> FinalResultReceived;
 }

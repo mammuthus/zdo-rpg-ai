@@ -17,20 +17,24 @@ internal partial class DeepgramJsonContext : JsonSerializerContext;
 
 public class DeepgramSpeechToText : ISpeechToText {
     private static readonly ILog Log = Logger.Get<DeepgramSpeechToText>();
+    private static readonly TimeSpan SessionTimeout = TimeSpan.FromSeconds(60);
 
     private readonly string _apiKey;
     private readonly int _sampleRate;
     private readonly string _encoding;
     private readonly string _language;
     private readonly string _model;
+
+    private readonly object _lock = new();
     private ClientWebSocket? _ws;
-    private Task? _receiveTask;
-    private CancellationTokenSource? _receiveCts;
+    private Task? _sessionTask;
+    private CancellationTokenSource? _sessionCts;
     private string _accumulatedTranscript = "";
-    private readonly object _bufferLock = new();
-    private List<byte[]>? _preConnectBuffer;
+    private List<byte[]>? _pendingBuffers;
+    private bool _finishing;
 
     public event Action<string>? InterimResultReceived;
+    public event Action<string>? FinalResultReceived;
 
     public DeepgramSpeechToText(DeepgramConfig config) {
         _apiKey = config.ApiKey;
@@ -40,105 +44,151 @@ public class DeepgramSpeechToText : ISpeechToText {
         _model = config.Model;
     }
 
-    public async Task StartSessionAsync(CancellationToken ct) {
-        _accumulatedTranscript = "";
+    public void Start() {
+        lock (_lock) {
+            if (_sessionTask != null) {
+                Log.Error("Start called while session is already active, ignoring");
+                return;
+            }
 
-        lock (_bufferLock) {
-            _preConnectBuffer = new List<byte[]>();
+            _accumulatedTranscript = "";
+            _pendingBuffers = new List<byte[]>();
+            _finishing = false;
+            _sessionCts = new CancellationTokenSource();
+            _sessionTask = Task.Run(() => RunSessionAsync(_sessionCts.Token));
         }
-
-        _ws = new ClientWebSocket();
-        _ws.Options.SetRequestHeader("Authorization", $"Token {_apiKey}");
-
-        var uri = $"wss://api.deepgram.com/v1/listen" +
-            $"?encoding={_encoding}" +
-            $"&sample_rate={_sampleRate}" +
-            $"&language={_language}" +
-            $"&model={_model}" +
-            $"&interim_results=true" +
-            $"&endpointing=300" +
-            $"&vad_events=true";
-
-        await _ws.ConnectAsync(new Uri(uri), ct);
-
-        List<byte[]> buffered;
-        lock (_bufferLock) {
-            buffered = _preConnectBuffer!;
-            _preConnectBuffer = null;
-        }
-
-        foreach (var buf in buffered) {
-            await _ws.SendAsync(buf, WebSocketMessageType.Binary, true, ct);
-        }
-
-        Log.Debug("Deepgram session started, flushed {Count} buffered frames", buffered.Count);
-
-        _receiveCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _receiveTask = RunReceiveLoopAsync(_receiveCts.Token);
     }
 
-    public async Task FeedAudioAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct) {
-        lock (_bufferLock) {
-            if (_preConnectBuffer != null) {
-                _preConnectBuffer.Add(buffer.ToArray());
+    public void FeedAudio(ReadOnlyMemory<byte> buffer) {
+        lock (_lock) {
+            if (_sessionTask == null) return;
+
+            if (_pendingBuffers != null) {
+                _pendingBuffers.Add(buffer.ToArray());
                 return;
             }
         }
-        if (_ws is not { State: WebSocketState.Open }) return;
-        await _ws.SendAsync(buffer, WebSocketMessageType.Binary, true, ct);
+
+        // WebSocket is connected, send directly on fire-and-forget task
+        var ws = _ws;
+        if (ws is not { State: WebSocketState.Open }) return;
+        _ = SendAudioAsync(ws, buffer);
     }
 
-    public async Task<string?> FinishSessionAsync(CancellationToken ct) {
-        if (_ws is { State: WebSocketState.Open }) {
-            var closeMsg = "{\"type\":\"CloseStream\"}"u8.ToArray();
-            try {
-                await _ws.SendAsync(closeMsg, WebSocketMessageType.Text, true, ct);
-            }
-            catch (WebSocketException) { }
-
-            if (_receiveTask != null) {
-                using var timeout = new CancellationTokenSource(5000);
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
-                try {
-                    await _receiveTask.WaitAsync(linked.Token);
-                }
-                catch (OperationCanceledException) { }
-            }
-
-            if (_ws.State == WebSocketState.Open) {
-                try {
-                    await _ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, ct);
-                }
-                catch (WebSocketException) { }
-            }
+    public void Finish() {
+        lock (_lock) {
+            if (_sessionTask == null) return;
+            _finishing = true;
         }
 
-        _receiveCts?.Cancel();
-        var result = _accumulatedTranscript.Trim();
-        Log.Debug("Deepgram session finished: '{Text}'", result);
-        return string.IsNullOrEmpty(result) ? null : result;
+        var ws = _ws;
+        if (ws is { State: WebSocketState.Open }) {
+            _ = SendCloseStreamAsync(ws);
+        }
     }
 
-    private async Task RunReceiveLoopAsync(CancellationToken ct) {
-        var buffer = new byte[8192];
+    public void Cancel() {
+        CancellationTokenSource? cts;
+        lock (_lock) {
+            if (_sessionTask == null) return;
+            cts = _sessionCts;
+        }
+
+        Log.Debug("Cancelling speech recognition session");
+        cts?.Cancel();
+    }
+
+    public void Dispose() {
+        Cancel();
+        _sessionCts?.Dispose();
+        _ws?.Dispose();
+    }
+
+    private async Task RunSessionAsync(CancellationToken ct) {
+        using var timeoutCts = new CancellationTokenSource(SessionTimeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+        var token = linked.Token;
+
         try {
-            while (_ws is { State: WebSocketState.Open } && !ct.IsCancellationRequested) {
-                using var ms = new MemoryStream();
-                WebSocketReceiveResult result;
-                do {
-                    result = await _ws.ReceiveAsync(buffer, ct);
-                    if (result.MessageType == WebSocketMessageType.Close) return;
-                    ms.Write(buffer, 0, result.Count);
-                } while (!result.EndOfMessage);
+            var ws = new ClientWebSocket();
+            ws.Options.SetRequestHeader("Authorization", $"Token {_apiKey}");
 
-                if (result.MessageType == WebSocketMessageType.Text) {
-                    var json = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
-                    ProcessMessage(json);
-                }
+            var uri = $"wss://api.deepgram.com/v1/listen" +
+                $"?encoding={_encoding}" +
+                $"&sample_rate={_sampleRate}" +
+                $"&language={_language}" +
+                $"&model={_model}" +
+                $"&interim_results=true" +
+                $"&endpointing=300" +
+                $"&vad_events=true";
+
+            await ws.ConnectAsync(new Uri(uri), token);
+            _ws = ws;
+
+            // Flush buffered audio
+            List<byte[]> buffered;
+            lock (_lock) {
+                buffered = _pendingBuffers!;
+                _pendingBuffers = null;
+            }
+
+            foreach (var buf in buffered) {
+                await ws.SendAsync(buf, WebSocketMessageType.Binary, true, token);
+            }
+
+            Log.Debug("Deepgram session started, flushed {Count} buffered frames", buffered.Count);
+
+            // Receive loop
+            await RunReceiveLoopAsync(ws, token);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested) {
+            Log.Error("Speech recognition session exceeded {Timeout}s timeout, auto-cancelling",
+                (int)SessionTimeout.TotalSeconds);
+        }
+        catch (OperationCanceledException) {
+            // Normal cancellation
+        }
+        catch (WebSocketException ex) {
+            Log.Warn("WebSocket error in STT session: {Error}", ex.Message);
+        }
+        catch (Exception ex) {
+            Log.Error("Unexpected error in STT session: {Error}", ex.Message);
+        }
+        finally {
+            bool wasFinishing;
+            string transcript;
+            lock (_lock) {
+                wasFinishing = _finishing;
+                transcript = _accumulatedTranscript.Trim();
+                _sessionTask = null;
+                _pendingBuffers = null;
+                _finishing = false;
+            }
+
+            CleanupWebSocket();
+
+            if (wasFinishing && !string.IsNullOrEmpty(transcript)) {
+                FinalResultReceived?.Invoke(transcript);
             }
         }
-        catch (OperationCanceledException) { }
-        catch (WebSocketException) { }
+    }
+
+    private async Task RunReceiveLoopAsync(ClientWebSocket ws, CancellationToken ct) {
+        var buffer = new byte[8192];
+        while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested) {
+            using var ms = new MemoryStream();
+            WebSocketReceiveResult result;
+            do {
+                result = await ws.ReceiveAsync(buffer, ct);
+                if (result.MessageType == WebSocketMessageType.Close) return;
+                ms.Write(buffer, 0, result.Count);
+            } while (!result.EndOfMessage);
+
+            if (result.MessageType == WebSocketMessageType.Text) {
+                var json = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
+                ProcessMessage(json);
+            }
+        }
     }
 
     private void ProcessMessage(string json) {
@@ -168,9 +218,38 @@ public class DeepgramSpeechToText : ISpeechToText {
         }
     }
 
-    public void Dispose() {
-        _receiveCts?.Cancel();
-        _receiveCts?.Dispose();
-        _ws?.Dispose();
+    private static async Task SendAudioAsync(ClientWebSocket ws, ReadOnlyMemory<byte> buffer) {
+        try {
+            if (ws.State == WebSocketState.Open)
+                await ws.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
+        }
+        catch (WebSocketException) { }
+    }
+
+    private static async Task SendCloseStreamAsync(ClientWebSocket ws) {
+        try {
+            if (ws.State == WebSocketState.Open) {
+                var closeMsg = "{\"type\":\"CloseStream\"}"u8.ToArray();
+                await ws.SendAsync(closeMsg, WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+        }
+        catch (WebSocketException) { }
+    }
+
+    private void CleanupWebSocket() {
+        var ws = _ws;
+        _ws = null;
+        if (ws == null) return;
+
+        try {
+            if (ws.State == WebSocketState.Open)
+                ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None)
+                    .ContinueWith(_ => ws.Dispose());
+            else
+                ws.Dispose();
+        }
+        catch {
+            ws.Dispose();
+        }
     }
 }
