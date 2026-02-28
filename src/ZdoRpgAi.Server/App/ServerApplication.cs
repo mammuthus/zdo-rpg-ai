@@ -39,7 +39,7 @@ public class ServerApplication : IDisposable {
     }
 
     public void Dispose() {
-        (_stt as IDisposable)?.Dispose();
+        _stt.Dispose();
         _saveGameRepo.Dispose();
         _mainRepo.Dispose();
     }
