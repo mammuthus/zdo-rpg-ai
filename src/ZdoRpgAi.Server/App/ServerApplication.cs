@@ -1,4 +1,5 @@
 using ZdoRpgAi.Core;
+using ZdoRpgAi.Protocol.Channel;
 using ZdoRpgAi.Protocol.Rpc;
 using ZdoRpgAi.Repository;
 using ZdoRpgAi.Server.Bootstrap;
@@ -19,7 +20,9 @@ public class ServerApplication : IDisposable {
     private readonly ISaveGameRepository _saveGameRepo;
     private readonly ISpeechToText _stt;
     private readonly object _lock = new();
+
     private RpcChannel? _activeRpc;
+    private ReusableRpcChannel _reusableRpc = new();
 
     public ServerApplication(
         IMainRepository mainRepo, ISaveGameRepository saveGameRepo,
@@ -29,7 +32,7 @@ public class ServerApplication : IDisposable {
         _saveGameRepo = saveGameRepo;
         _stt = stt;
         _httpServer = httpServer;
-        _game = new Game.GameRunner(mainRepo, saveGameRepo, tts, stt, mainLlm, simpleLlm, lua, directorConfig);
+        _game = new Game.GameRunner(mainRepo, saveGameRepo, _reusableRpc, tts, stt, mainLlm, simpleLlm, lua, directorConfig);
 
         _httpServer.ClientConnected += OnClientConnected;
     }
@@ -46,21 +49,21 @@ public class ServerApplication : IDisposable {
         _mainRepo.Dispose();
     }
 
-    private void OnClientConnected(RpcChannel rpc) {
+    private void OnClientConnected(IChannel rpc) {
         lock (_lock) {
             _activeRpc?.Close();
-            _activeRpc = rpc;
+
+            _activeRpc = new RpcChannel(rpc);
+            _reusableRpc.Underlying = _activeRpc;
         }
 
         rpc.Disconnected += () => {
             lock (_lock) {
                 if (_activeRpc == rpc) {
                     _activeRpc = null;
+                    _reusableRpc.Underlying = null;
                 }
             }
-            _game.SetActiveClient(null);
         };
-
-        _game.SetActiveClient(rpc);
     }
 }

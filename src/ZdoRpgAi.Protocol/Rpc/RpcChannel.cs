@@ -61,8 +61,6 @@ public class RpcChannel : IRpcChannel {
         }
     }
 
-    public Task RunAsync() => _channel.RunAsync();
-
     public void Close() => _channel.Close();
 
     private void OnChannelMessage(Message msg) {

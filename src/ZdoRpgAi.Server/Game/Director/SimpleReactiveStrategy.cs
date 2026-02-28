@@ -13,31 +13,23 @@ public class SimpleReactiveStrategy : IDirectorStrategy {
     private readonly ILlm _simpleLlm;
     private readonly IStory _story;
     private readonly NpcRepository _npcRepo;
-    private IRpcChannel? _client;
+    private readonly IRpcChannel _rpc;
 
-    public SimpleReactiveStrategy(ILlm mainLlm, ILlm simpleLlm, IStory story, NpcRepository npcRepo) {
+    public SimpleReactiveStrategy(ILlm mainLlm, ILlm simpleLlm, IStory story, NpcRepository npcRepo, IRpcChannel rpc) {
         _mainLlm = mainLlm;
         _simpleLlm = simpleLlm;
         _story = story;
         _npcRepo = npcRepo;
-    }
-
-    public void SetClient(IRpcChannel? client) {
-        _client = client;
+        _rpc = rpc;
     }
 
     public async Task<List<StoryEvent>> ProcessStoryEventsAsync(List<StoryEvent> events) {
-        var client = _client;
-        if (client == null) {
-            Log.Warn("No client connected, cannot process events");
-            return [];
-        }
 
         var playerIds = events.OfType<StoryEvent.PlayerSpeak>()
             .Select(ps => ps.PlayerCharacterId)
             .ToHashSet();
 
-        var (npcId, gameTime) = await FindLastTargetedNpcAsync(client, events, playerIds);
+        var (npcId, gameTime) = await FindLastTargetedNpcAsync(_rpc, events, playerIds);
         if (npcId == null) {
             Log.Debug("No target NPC found in events");
             return [];
@@ -72,11 +64,11 @@ public class SimpleReactiveStrategy : IDirectorStrategy {
     }
 
     private async Task<(string? NpcId, string? GameTime)> FindLastTargetedNpcAsync(
-        IRpcChannel client, List<StoryEvent> events, HashSet<string> playerIds) {
+        IRpcChannel rpc, List<StoryEvent> events, HashSet<string> playerIds) {
         for (var i = events.Count - 1; i >= 0; i--) {
             switch (events[i]) {
                 case StoryEvent.PlayerSpeak ps:
-                    var npcId = ps.TargetCharacterId ?? await DetermineTargetNpcAsync(client, ps);
+                    var npcId = ps.TargetCharacterId ?? await DetermineTargetNpcAsync(rpc, ps);
                     if (npcId != null) {
                         return (npcId, ps.GameTime);
                     }
@@ -89,8 +81,8 @@ public class SimpleReactiveStrategy : IDirectorStrategy {
         return (null, null);
     }
 
-    private async Task<string?> DetermineTargetNpcAsync(IRpcChannel client, StoryEvent.PlayerSpeak evt) {
-        var hearResponse = await client.CallAsync(
+    private async Task<string?> DetermineTargetNpcAsync(IRpcChannel rpc, StoryEvent.PlayerSpeak evt) {
+        var hearResponse = await rpc.CallAsync(
             nameof(ServerToModMessageType.GetCharactersWhoHear),
             JsonExtensions.SerializeToObject(
                 new GetCharactersWhoHearRequestPayload(evt.PlayerCharacterId),

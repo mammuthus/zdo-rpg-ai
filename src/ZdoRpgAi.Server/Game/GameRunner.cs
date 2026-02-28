@@ -26,6 +26,7 @@ public class GameRunner {
 
     public GameRunner(
         IMainRepository mainRepo, ISaveGameRepository saveGameRepo,
+        IRpcChannel rpc,
         ITextToSpeech tts, ISpeechToText stt, ILlm mainLlm, ILlm simpleLlm, LuaSandbox lua,
         DirectorSection directorConfig) {
         _mainRepo = mainRepo;
@@ -36,26 +37,12 @@ public class GameRunner {
 
         var summaryBuilder = new StorySummaryBuilder(simpleLlm);
         var story = new Story.Story(saveGameRepo, summaryBuilder, directorConfig);
-        _playerHandler = new PlayerMessageHandler(stt);
-        _storyComposer = new StoryComposer(story);
-        _npcRepo = new NpcRepository(mainRepo, saveGameRepo);
-        _director = new Director.Director(story, _storyComposer, mainLlm, simpleLlm, _npcRepo);
+        _playerHandler = new PlayerMessageHandler(stt, rpc);
+        var directorHelper = new Director.DirectorHelper(rpc);
+        _storyComposer = new StoryComposer(story, directorHelper, rpc);
+        _npcRepo = new NpcRepository(mainRepo, saveGameRepo, rpc);
+        _director = new Director.Director(story, directorHelper, rpc, mainLlm, simpleLlm, _npcRepo);
 
         _playerHandler.PlayerSpoke += _storyComposer.OnPlayerSpeak;
-    }
-
-    public void SetActiveClient(IRpcChannel? rpc) {
-        if (rpc != null) {
-            _playerHandler.OnClientConnected(rpc);
-            _storyComposer.OnClientConnected(rpc);
-            _npcRepo.SetClient(rpc);
-            _director.SetClient(rpc);
-        }
-        else {
-            _playerHandler.OnClientDisconnected();
-            _storyComposer.OnClientDisconnected();
-            _npcRepo.SetClient(null);
-            _director.SetClient(null);
-        }
     }
 }

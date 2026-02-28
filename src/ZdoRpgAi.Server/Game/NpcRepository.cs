@@ -12,15 +12,12 @@ public class NpcRepository {
 
     private readonly IMainRepository _mainRepo;
     private readonly ISaveGameRepository _saveGameRepo;
-    private IRpcChannel? _client;
+    private readonly IRpcChannel _rpc;
 
-    public NpcRepository(IMainRepository mainRepo, ISaveGameRepository saveGameRepo) {
+    public NpcRepository(IMainRepository mainRepo, ISaveGameRepository saveGameRepo, IRpcChannel rpc) {
         _mainRepo = mainRepo;
         _saveGameRepo = saveGameRepo;
-    }
-
-    public void SetClient(IRpcChannel? client) {
-        _client = client;
+        _rpc = rpc;
     }
 
     public async Task<NpcInfo?> GetNpcInfoAsync(string npcId) {
@@ -30,13 +27,7 @@ public class NpcRepository {
             return ToNpcInfo(raw);
         }
 
-        var client = _client;
-        if (client == null) {
-            Log.Warn("NPC {NpcId} not found in repos and no client connected", npcId);
-            return null;
-        }
-
-        var response = await client.CallAsync(
+        var response = await _rpc.CallAsync(
             nameof(ServerToModMessageType.GetNpcInfo),
             JsonExtensions.SerializeToObject(
                 new GetNpcInfoRequestPayload(npcId),

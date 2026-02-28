@@ -10,23 +10,19 @@ public class Director {
     private static readonly ILog Log = Logger.Get<Director>();
 
     private readonly Story.Story _story;
-    private readonly StoryComposer _storyComposer;
+    private readonly DirectorHelper _directorHelper;
     private readonly SimpleReactiveStrategy _simpleReactive;
+    private readonly IRpcChannel _rpc;
     private readonly object _bufferLock = new();
     private readonly List<StoryEvent> _buffer = [];
     private bool _processing;
-    private IRpcChannel? _client;
 
-    public Director(Story.Story story, StoryComposer storyComposer, ILlm mainLlm, ILlm simpleLlm, NpcRepository npcRepo) {
+    public Director(Story.Story story, DirectorHelper directorHelper, IRpcChannel rpc, ILlm mainLlm, ILlm simpleLlm, NpcRepository npcRepo) {
         _story = story;
-        _storyComposer = storyComposer;
-        _simpleReactive = new SimpleReactiveStrategy(mainLlm, simpleLlm, story, npcRepo);
+        _directorHelper = directorHelper;
+        _rpc = rpc;
+        _simpleReactive = new SimpleReactiveStrategy(mainLlm, simpleLlm, story, npcRepo, rpc);
         story.EventRegistered += OnStoryEventRegistered;
-    }
-
-    public void SetClient(IRpcChannel? client) {
-        _client = client;
-        _simpleReactive.SetClient(client);
     }
 
     private void OnStoryEventRegistered(StoryEvent evt) {
@@ -72,33 +68,44 @@ public class Director {
 
         try {
             var newEvents = await strategy.ProcessStoryEventsAsync(events);
-
-            foreach (var evt in newEvents) {
-                await RegisterAndPublishAsync(evt);
-            }
+            await RegisterAndPublishAsync(newEvents);
         }
         catch (Exception ex) {
             Log.Error("Strategy {Strategy} failed: {Error}", strategy.GetType().Name, ex.Message);
         }
     }
 
-    private async Task RegisterAndPublishAsync(StoryEvent evt) {
-        var observerIds = await _storyComposer.QueryObserverIdsAsync(evt);
-        var registered = _story.RegisterEvent(evt, observerIds);
+    private async Task RegisterAndPublishAsync(List<StoryEvent> events) {
+        var observersCache = new Dictionary<string, string[]>();
 
-        var client = _client;
-        if (client == null) {
-            return;
-        }
+        foreach (var e in events) {
+            var (mainCharId, targetCharId) = e switch {
+                StoryEvent.PlayerSpeak ps => (ps.PlayerCharacterId, ps.TargetCharacterId),
+                StoryEvent.NpcSpeak ns => (ns.NpcCharacterId, ns.TargetCharacterId),
+                _ => ((string?)null, (string?)null),
+            };
 
-        if (registered is StoryEvent.NpcSpeak npcSpeak) {
-            client.Publish(
-                nameof(ServerToModMessageType.NpcSpeaks),
-                JsonExtensions.SerializeToObject(
-                    new NpcSpeaksPayload(npcSpeak.NpcCharacterId, npcSpeak.Text),
-                    PayloadJsonContext.Default.NpcSpeaksPayload));
+            if (mainCharId == null) {
+                _story.RegisterEvent(e, []);
+                continue;
+            }
 
-            Log.Info("NPC {NpcId} responds: {Text}", npcSpeak.NpcCharacterId, npcSpeak.Text);
+            if (!observersCache.TryGetValue(mainCharId, out var observerIds)) {
+                observerIds = await _directorHelper.QueryObserverIdsAsync(mainCharId, targetCharId != null ? [targetCharId] : null);
+                observersCache[mainCharId] = observerIds;
+            }
+
+            _story.RegisterEvent(e, observerIds);
+
+            if (e is StoryEvent.NpcSpeak npcSpeak) {
+                _rpc.Publish(
+                    nameof(ServerToModMessageType.NpcSpeaks),
+                    JsonExtensions.SerializeToObject(
+                        new NpcSpeaksPayload(npcSpeak.NpcCharacterId, npcSpeak.Text),
+                        PayloadJsonContext.Default.NpcSpeaksPayload));
+
+                Log.Info("NPC {NpcId} responds: {Text}", npcSpeak.NpcCharacterId, npcSpeak.Text);
+            }
         }
     }
 

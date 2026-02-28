@@ -10,32 +10,17 @@ public class PlayerMessageHandler {
     private static readonly ILog Log = Logger.Get<PlayerMessageHandler>();
 
     private readonly ISpeechToText _stt;
-    private IRpcChannel? _client;
+    private readonly IRpcChannel _rpc;
     private SpeakingSession? _activeSession;
 
     public event Action<string, string?, string, string>? PlayerSpoke;
 
-    public PlayerMessageHandler(ISpeechToText stt) {
+    public PlayerMessageHandler(ISpeechToText stt, IRpcChannel rpc) {
         _stt = stt;
-    }
-
-    public void OnClientConnected(IRpcChannel client) {
-        _client = client;
-        client.MessageReceived += OnMessageReceived;
+        _rpc = rpc;
+        rpc.MessageReceived += OnMessageReceived;
         _stt.InterimResultReceived += OnInterimResultReceived;
         _stt.FinalResultReceived += OnFinalResultReceived;
-    }
-
-    public void OnClientDisconnected() {
-        _stt.InterimResultReceived -= OnInterimResultReceived;
-        _stt.FinalResultReceived -= OnFinalResultReceived;
-
-        if (_activeSession != null) {
-            _stt.Cancel();
-            _activeSession = null;
-        }
-
-        _client = null;
     }
 
     private void OnMessageReceived(Message msg) {
@@ -108,14 +93,13 @@ public class PlayerMessageHandler {
 
     private void OnInterimResultReceived(string text) {
         var session = _activeSession;
-        var client = _client;
-        if (session == null || client == null) {
-            Log.Warn("Received interim STT result but no active session or client");
+        if (session == null) {
+            Log.Warn("Received interim STT result but no active session");
             return;
         }
 
         Log.Debug("Interim recognition for {PlayerId}: {Text}", session.PlayerId, text);
-        client.Publish(
+        _rpc.Publish(
             nameof(ServerToModMessageType.SpeechRecognitionInProgress),
             JsonExtensions.SerializeToObject(
                 new SpeechRecognitionInProgressPayload(session.PlayerId, text),
@@ -126,14 +110,13 @@ public class PlayerMessageHandler {
         var session = _activeSession;
         _activeSession = null;
 
-        var client = _client;
-        if (session == null || client == null) {
-            Log.Warn("Received final STT result but no active session or client");
+        if (session == null) {
+            Log.Warn("Received final STT result but no active session");
             return;
         }
 
         Log.Info("Final recognition for {PlayerId}: {Text}", session.PlayerId, text);
-        client.Publish(
+        _rpc.Publish(
             nameof(ServerToModMessageType.SpeechRecognitionComplete),
             JsonExtensions.SerializeToObject(
                 new SpeechRecognitionCompletePayload(session.PlayerId, text),
@@ -145,12 +128,6 @@ public class PlayerMessageHandler {
     private void HandlePlayerSpeaksText(Message msg) {
         var payload = msg.Json?.DeserializeSafe(PayloadJsonContext.Default.PlayerSpeaksTextPayload);
         if (payload == null) {
-            return;
-        }
-
-        var client = _client;
-        if (client == null) {
-            Log.Warn("Received PlayerSpeaksText but no client connected");
             return;
         }
 

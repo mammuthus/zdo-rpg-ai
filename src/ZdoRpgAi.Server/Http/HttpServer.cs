@@ -18,7 +18,7 @@ public class HttpServer {
     private readonly int _rpcTimeoutMs;
     private readonly string _clientToken;
 
-    public event Action<RpcChannel>? ClientConnected;
+    public event Action<IChannel>? ClientConnected;
 
     public HttpServer(HttpServerSection config) {
         _maxMessageSize = config.MaxMessageSize;
@@ -50,12 +50,11 @@ public class HttpServer {
 
             var socket = await context.WebSockets.AcceptWebSocketAsync();
             var channel = new WebSocketChannel(socket, _maxMessageSize);
-            var rpc = new RpcChannel(channel, _rpcTimeoutMs);
 
             Log.Info("Client connected");
-            ClientConnected?.Invoke(rpc);
+            ClientConnected?.Invoke(channel);
 
-            await rpc.RunAsync();
+            await channel.RunAsync();
             Log.Info("Client disconnected");
         });
     }
