@@ -1,4 +1,3 @@
-using System.Net.WebSockets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
@@ -16,10 +15,8 @@ public class HttpServer {
     private readonly WebApplication _app;
     private readonly int _maxMessageSize;
     private readonly int _rpcTimeoutMs;
-    private RpcChannel? _activeRpc;
-    private readonly object _lock = new();
 
-    public event Action<RpcChannel>? OnClientConnected;
+    public event Action<RpcChannel>? ClientConnected;
 
     public HttpServer(HttpServerSection config) {
         _maxMessageSize = config.MaxMessageSize;
@@ -40,35 +37,12 @@ public class HttpServer {
                 return;
             }
 
-            lock (_lock) {
-                if (_activeRpc != null) {
-                    context.Response.StatusCode = 409;
-                    return;
-                }
-            }
-
             var socket = await context.WebSockets.AcceptWebSocketAsync();
             var channel = new WebSocketChannel(socket, _maxMessageSize);
             var rpc = new RpcChannel(channel, _rpcTimeoutMs);
 
-            lock (_lock) {
-                if (_activeRpc != null) {
-                    socket.CloseOutputAsync(WebSocketCloseStatus.PolicyViolation, "Already connected", CancellationToken.None).Wait();
-                    return;
-                }
-                _activeRpc = rpc;
-            }
-
-            rpc.Disconnected += () => {
-                lock (_lock) {
-                    if (_activeRpc == rpc) {
-                        _activeRpc = null;
-                    }
-                }
-            };
-
             Log.Info("Client connected");
-            OnClientConnected?.Invoke(rpc);
+            ClientConnected?.Invoke(rpc);
 
             await rpc.RunAsync();
             Log.Info("Client disconnected");
@@ -76,11 +50,6 @@ public class HttpServer {
     }
 
     public async Task StartAsync(CancellationToken ct = default) {
-        _app.Lifetime.ApplicationStopping.Register(() => {
-            lock (_lock) {
-                _activeRpc?.Close();
-            }
-        });
-        await ((IHost)_app).RunAsync(ct);
+        await _app.RunAsync(ct);
     }
 }

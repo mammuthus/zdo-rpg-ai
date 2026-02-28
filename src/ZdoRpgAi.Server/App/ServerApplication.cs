@@ -1,4 +1,5 @@
 using ZdoRpgAi.Core;
+using ZdoRpgAi.Protocol.Rpc;
 using ZdoRpgAi.Repository;
 using ZdoRpgAi.Server.Http;
 using ZdoRpgAi.Server.Llm;
@@ -11,13 +12,13 @@ namespace ZdoRpgAi.Server.App;
 public class ServerApplication : IDisposable {
     private static readonly ILog Log = Logger.Get<ServerApplication>();
 
+    private readonly Game.GameRunner _game;
+    private readonly HttpServer _httpServer;
     private readonly IMainRepository _mainRepo;
     private readonly ISaveGameRepository _saveGameRepo;
-    private readonly ITextToSpeech _tts;
     private readonly ISpeechToText _stt;
-    private readonly ILlm _llm;
-    private readonly LuaSandbox _lua;
-    private readonly HttpServer _httpServer;
+    private readonly object _lock = new();
+    private RpcChannel? _activeRpc;
 
     public ServerApplication(
         IMainRepository mainRepo, ISaveGameRepository saveGameRepo,
@@ -25,11 +26,11 @@ public class ServerApplication : IDisposable {
         HttpServer httpServer) {
         _mainRepo = mainRepo;
         _saveGameRepo = saveGameRepo;
-        _tts = tts;
         _stt = stt;
-        _llm = llm;
-        _lua = lua;
         _httpServer = httpServer;
+        _game = new Game.GameRunner(mainRepo, saveGameRepo, tts, stt, llm, lua);
+
+        _httpServer.ClientConnected += OnClientConnected;
     }
 
     public async Task RunAsync(CancellationToken ct) {
@@ -42,5 +43,22 @@ public class ServerApplication : IDisposable {
         _stt.Dispose();
         _saveGameRepo.Dispose();
         _mainRepo.Dispose();
+    }
+
+    private void OnClientConnected(RpcChannel rpc) {
+        lock (_lock) {
+            _activeRpc?.Close();
+            _activeRpc = rpc;
+        }
+
+        rpc.Disconnected += () => {
+            lock (_lock) {
+                if (_activeRpc == rpc)
+                    _activeRpc = null;
+            }
+            _game.SetActiveClient(null);
+        };
+
+        _game.SetActiveClient(rpc);
     }
 }

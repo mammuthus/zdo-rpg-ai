@@ -4,7 +4,7 @@ using ZdoRpgAi.Protocol.Channel;
 
 namespace ZdoRpgAi.Protocol.Rpc;
 
-public class RpcChannel {
+public class RpcChannel : IRpcChannel {
     private static readonly ILog Log = Logger.Get<RpcChannel>();
 
     private readonly IChannel _channel;
