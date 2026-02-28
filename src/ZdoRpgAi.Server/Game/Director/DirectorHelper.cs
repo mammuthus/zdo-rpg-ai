@@ -2,6 +2,8 @@ using ZdoRpgAi.Core;
 using ZdoRpgAi.Protocol.Channel;
 using ZdoRpgAi.Protocol.Messages;
 using ZdoRpgAi.Protocol.Rpc;
+using ZdoRpgAi.Server.TextToSpeech;
+using ZdoRpgAi.Server.Util.Mp3;
 
 namespace ZdoRpgAi.Server.Game.Director;
 
@@ -12,6 +14,16 @@ public class DirectorHelper {
 
     public DirectorHelper(IRpcChannel rpc) {
         _rpc = rpc;
+    }
+
+    public void PublishNpcSpeaksMp3(string npcId, string text, ITextToSpeechOutput mp3) {
+        var duration = Mp3Duration.Estimate(mp3.Mp3Bytes) ?? 0;
+        _rpc.Publish(
+            nameof(ServerToClientMessageType.NpcSpeaksMp3),
+            JsonExtensions.SerializeToObject(
+                new NpcSpeaksMp3Payload(npcId, text, duration),
+                PayloadJsonContext.Default.NpcSpeaksMp3Payload),
+            mp3.Mp3Bytes);
     }
 
     public async Task<string[]> QueryObserverIdsAsync(string characterId, string[]? excludeIds) {

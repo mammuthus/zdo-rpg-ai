@@ -6,7 +6,6 @@ namespace ZdoRpgAi.Protocol.Messages;
 // Server → Client
 [JsonSerializable(typeof(NpcSpeaksMp3Payload))]
 // Server → Mod
-[JsonSerializable(typeof(NpcSpeaksPayload))]
 [JsonSerializable(typeof(SpeechRecognitionInProgressPayload))]
 [JsonSerializable(typeof(SpeechRecognitionCompletePayload))]
 [JsonSerializable(typeof(GetCharactersWhoHearRequestPayload))]

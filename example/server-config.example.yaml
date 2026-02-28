@@ -27,6 +27,14 @@ tts:
   #   similarityBoost: 0.75
   #   style: 0.2
   #   useSpeakerBoost: false
+  #   voiceIdMapping:
+  #     fallback: "<voiceId>"
+  #     byRaceSex:
+  #       dm: "<voiceId>"
+  #       df: "<voiceId>"
+  mp3Speed:
+    ffmpegExePath: ffmpeg
+    charactersPerSecond: 15
 
 # Speech-to-text (dummy | deepgram)
 stt:

@@ -1,6 +1,6 @@
 namespace ZdoRpgAi.Server.TextToSpeech.Dummy;
 
 public class DummyTextToSpeech : ITextToSpeech {
-    public Task<Mp3Data> GenerateAsync(string text, IVoiceInfo voiceInfo) =>
-        Task.FromResult(new Mp3Data(new byte[128]));
+    public Task<ITextToSpeechOutput> GenerateAsync(ITextToSpeechInput input) =>
+        Task.FromResult(new ITextToSpeechOutput { Mp3Bytes = new byte[128] });
 }

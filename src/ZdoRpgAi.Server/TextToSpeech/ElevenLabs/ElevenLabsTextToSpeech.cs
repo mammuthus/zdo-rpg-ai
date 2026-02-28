@@ -13,6 +13,8 @@ public class ElevenLabsTextToSpeech : ITextToSpeech {
     private readonly double _similarityBoost;
     private readonly double _style;
     private readonly bool _useSpeakerBoost;
+    private readonly string _fallbackVoiceId;
+    private readonly Dictionary<string, string> _voiceIdByRaceSex;
 
     public ElevenLabsTextToSpeech(ElevenLabsConfig config) {
         _model = config.Model;
@@ -20,19 +22,19 @@ public class ElevenLabsTextToSpeech : ITextToSpeech {
         _similarityBoost = config.SimilarityBoost;
         _style = config.Style;
         _useSpeakerBoost = config.UseSpeakerBoost;
+        _fallbackVoiceId = config.VoiceIdMapping.Fallback;
+        _voiceIdByRaceSex = config.VoiceIdMapping.ByRaceSex;
         _http = new HttpClient();
         _http.DefaultRequestHeaders.Add("xi-api-key", config.ApiKey);
     }
 
-    public async Task<Mp3Data> GenerateAsync(string text, IVoiceInfo voiceInfo) {
-        if (voiceInfo is not ElevenLabsVoiceInfo elevenVoice) {
-            throw new ArgumentException($"Expected {nameof(ElevenLabsVoiceInfo)}, got {voiceInfo.GetType().Name}");
-        }
+    public async Task<ITextToSpeechOutput> GenerateAsync(ITextToSpeechInput input) {
+        var voiceId = ResolveVoiceId(input.npcRace, input.npcSex);
 
-        var url = $"https://api.elevenlabs.io/v1/text-to-speech/{elevenVoice.VoiceId}";
+        var url = $"https://api.elevenlabs.io/v1/text-to-speech/{voiceId}";
 
         var body = new JsonObject {
-            ["text"] = text,
+            ["text"] = input.text,
             ["model_id"] = _model,
             ["voice_settings"] = new JsonObject {
                 ["stability"] = _stability,
@@ -44,7 +46,7 @@ public class ElevenLabsTextToSpeech : ITextToSpeech {
 
         var content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
 
-        Log.Debug("Synthesizing {Length} chars with voice {VoiceId}", text.Length, elevenVoice.VoiceId);
+        Log.Debug("Synthesizing {Length} chars with voice {VoiceId} for NPC {NpcId}", input.text.Length, voiceId, input.npcId);
 
         var resp = await _http.PostAsync(url, content);
 
@@ -56,6 +58,17 @@ public class ElevenLabsTextToSpeech : ITextToSpeech {
 
         var audio = await resp.Content.ReadAsByteArrayAsync();
         Log.Debug("Received {Size} bytes of audio", audio.Length);
-        return new Mp3Data(audio);
+        return new ITextToSpeechOutput { Mp3Bytes = audio };
+    }
+
+    private string ResolveVoiceId(string race, string sex) {
+        var key = $"{char.ToLowerInvariant(race[0])}{char.ToLowerInvariant(sex[0])}";
+
+        if (_voiceIdByRaceSex.TryGetValue(key, out var voiceId)) {
+            return voiceId;
+        }
+
+        Log.Warn("No voice mapping for key '{Key}' (race={Race}, sex={Sex}), using fallback", key, race, sex);
+        return _fallbackVoiceId;
     }
 }

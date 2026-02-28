@@ -1,8 +1,10 @@
 using ZdoRpgAi.Core;
 using ZdoRpgAi.Protocol.Messages;
 using ZdoRpgAi.Protocol.Rpc;
+using ZdoRpgAi.Server.Game.Npc;
 using ZdoRpgAi.Server.Game.Story;
 using ZdoRpgAi.Server.Llm;
+using ZdoRpgAi.Server.Util.Mp3;
 
 namespace ZdoRpgAi.Server.Game.Director;
 
@@ -11,16 +13,21 @@ public class Director {
 
     private readonly Story.Story _story;
     private readonly DirectorHelper _directorHelper;
+    private readonly NpcSpeechGenerator _npcSpeechGenerator;
     private readonly SimpleReactiveStrategy _simpleReactive;
     private readonly IRpcChannel _rpc;
+    private readonly NpcRepository _npcRepo;
     private readonly object _bufferLock = new();
     private readonly List<StoryEvent> _buffer = [];
     private bool _processing;
+    private int _playerInterruptionIteration = 0;
 
-    public Director(Story.Story story, DirectorHelper directorHelper, IRpcChannel rpc, ILlm mainLlm, ILlm simpleLlm, NpcRepository npcRepo) {
+    public Director(Story.Story story, DirectorHelper directorHelper, NpcSpeechGenerator npcSpeechGenerator, IRpcChannel rpc, ILlm mainLlm, ILlm simpleLlm, NpcRepository npcRepo) {
         _story = story;
         _directorHelper = directorHelper;
+        _npcSpeechGenerator = npcSpeechGenerator;
         _rpc = rpc;
+        _npcRepo = npcRepo;
         _simpleReactive = new SimpleReactiveStrategy(mainLlm, simpleLlm, story, npcRepo, rpc);
         story.EventRegistered += OnStoryEventRegistered;
     }
@@ -77,6 +84,7 @@ public class Director {
 
     private async Task RegisterAndPublishAsync(List<StoryEvent> events) {
         var observersCache = new Dictionary<string, string[]>();
+        StoryEvent.NpcSpeak? npcSpeakEvent = null;
 
         foreach (var e in events) {
             var (mainCharId, targetCharId) = e switch {
@@ -98,14 +106,43 @@ public class Director {
             _story.RegisterEvent(e, observerIds);
 
             if (e is StoryEvent.NpcSpeak npcSpeak) {
-                _rpc.Publish(
-                    nameof(ServerToModMessageType.NpcSpeaks),
-                    JsonExtensions.SerializeToObject(
-                        new NpcSpeaksPayload(npcSpeak.NpcCharacterId, npcSpeak.Text),
-                        PayloadJsonContext.Default.NpcSpeaksPayload));
-
-                Log.Info("NPC {NpcId} responds: {Text}", npcSpeak.NpcCharacterId, npcSpeak.Text);
+                Log.Info("NPC {NpcId} speaks: {Text}", npcSpeak.NpcCharacterId, npcSpeak.Text);
+                npcSpeakEvent = npcSpeak;
             }
+        }
+
+        if (npcSpeakEvent != null) {
+            var npc = await _npcRepo.GetNpcInfoAsync(npcSpeakEvent.NpcCharacterId);
+            if (npc != null) {
+                var iterationBeforeGeneration = _playerInterruptionIteration;
+                var mp3 = await _npcSpeechGenerator.GenerateAsync(npc, npcSpeakEvent.Text);
+                if (_playerInterruptionIteration == iterationBeforeGeneration && mp3 != null) {
+                    _directorHelper.PublishNpcSpeaksMp3(npcSpeakEvent.NpcCharacterId, npcSpeakEvent.Text, mp3);
+
+                    var durationMs = (int)((Mp3Duration.Estimate(mp3.Mp3Bytes) ?? 0) * 1000);
+                    if (durationMs > 0) {
+                        await WaitUnlessInterruptedAsync(durationMs, iterationBeforeGeneration);
+                    }
+                }
+            }
+            else {
+                Log.Warn($"Cannot get NPC info id={npcSpeakEvent.NpcCharacterId}");
+            }
+        }
+    }
+
+    private async Task WaitUnlessInterruptedAsync(int durationMs, int expectedIteration) {
+        const int pollIntervalMs = 100;
+        var remaining = durationMs;
+        while (remaining > 0) {
+            if (_playerInterruptionIteration != expectedIteration) {
+                Log.Debug("Speech playback wait interrupted by player");
+                return;
+            }
+
+            var delay = Math.Min(remaining, pollIntervalMs);
+            await Task.Delay(delay);
+            remaining -= delay;
         }
     }
 

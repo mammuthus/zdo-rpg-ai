@@ -1,6 +1,7 @@
 using ZdoRpgAi.Core;
 using ZdoRpgAi.Protocol.Messages;
 using ZdoRpgAi.Protocol.Rpc;
+using ZdoRpgAi.Server.Game.Npc;
 using ZdoRpgAi.Server.Game.Story;
 using ZdoRpgAi.Server.Llm;
 

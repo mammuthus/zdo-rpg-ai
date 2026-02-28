@@ -3,6 +3,8 @@ using ZdoRpgAi.Protocol.Rpc;
 using ZdoRpgAi.Repository;
 using ZdoRpgAi.Server.Bootstrap;
 using ZdoRpgAi.Server.Game.Director;
+using ZdoRpgAi.Server.Game.Npc;
+using ZdoRpgAi.Server.Util.Mp3;
 using ZdoRpgAi.Server.Llm;
 using ZdoRpgAi.Server.Lua;
 using ZdoRpgAi.Server.SpeechToText;
@@ -28,7 +30,7 @@ public class GameRunner {
         IMainRepository mainRepo, ISaveGameRepository saveGameRepo,
         IRpcChannel rpc,
         ITextToSpeech tts, ISpeechToText stt, ILlm mainLlm, ILlm simpleLlm, LuaSandbox lua,
-        DirectorSection directorConfig) {
+        DirectorSection directorConfig, Mp3SpeedConfig mp3SpeedConfig) {
         _mainRepo = mainRepo;
         _saveGameRepo = saveGameRepo;
         _tts = tts;
@@ -41,7 +43,9 @@ public class GameRunner {
         var directorHelper = new Director.DirectorHelper(rpc);
         _storyComposer = new StoryComposer(story, directorHelper, rpc);
         _npcRepo = new NpcRepository(mainRepo, saveGameRepo, rpc);
-        _director = new Director.Director(story, directorHelper, rpc, mainLlm, simpleLlm, _npcRepo);
+        var speedAdjuster = new Mp3SpeedAdjuster(mp3SpeedConfig);
+        var npcSpeechGenerator = new NpcSpeechGenerator(tts, speedAdjuster);
+        _director = new Director.Director(story, directorHelper, npcSpeechGenerator, rpc, mainLlm, simpleLlm, _npcRepo);
 
         _playerHandler.PlayerSpoke += _storyComposer.OnPlayerSpeak;
     }

@@ -38,7 +38,7 @@ public static class ServerBootstrap {
         var lua = new LuaSandbox();
         var httpServer = new HttpServer(config.HttpServer);
 
-        return new ServerApplication(mainRepo, saveGameRepo, tts, stt, mainLlm, simpleLlm, lua, httpServer, config.Director);
+        return new ServerApplication(mainRepo, saveGameRepo, tts, stt, mainLlm, simpleLlm, lua, httpServer, config.Director, config.Tts.Mp3Speed);
     }
 
     private static ITextToSpeech CreateTts(TtsSection config) {

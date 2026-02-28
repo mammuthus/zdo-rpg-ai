@@ -3,7 +3,7 @@ using ZdoRpgAi.Protocol.Messages;
 using ZdoRpgAi.Protocol.Rpc;
 using ZdoRpgAi.Repository;
 
-namespace ZdoRpgAi.Server.Game;
+namespace ZdoRpgAi.Server.Game.Npc;
 
 public record NpcInfo(string Id, string Name, string Race, string Sex);
 

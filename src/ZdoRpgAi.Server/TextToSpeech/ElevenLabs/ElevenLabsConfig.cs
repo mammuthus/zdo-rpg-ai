@@ -7,4 +7,10 @@ public class ElevenLabsConfig {
     public double SimilarityBoost { get; init; } = 0.75;
     public double Style { get; init; } = 0.2;
     public bool UseSpeakerBoost { get; init; }
+    public required VoiceIdMappingConfig VoiceIdMapping { get; init; }
+}
+
+public class VoiceIdMappingConfig {
+    public required string Fallback { get; init; }
+    public Dictionary<string, string> ByRaceSex { get; init; } = new();
 }
