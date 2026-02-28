@@ -16,9 +16,15 @@ public class LocalDatabaseMainRepository : IMainRepository, IDisposable {
         cmd.CommandText = "SELECT dataJson FROM npc WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", npcId);
         var json = cmd.ExecuteScalar() as string;
-        if (json == null) return null;
+        if (json == null) {
+            return null;
+        }
+
         var data = JsonSerializer.Deserialize(json, NpcDataJsonContext.Default.NpcDataJson);
-        if (data == null) return null;
+        if (data == null) {
+            return null;
+        }
+
         return new RawNpcInfo(npcId, data.Name, data.Race, data.Sex);
     }
 

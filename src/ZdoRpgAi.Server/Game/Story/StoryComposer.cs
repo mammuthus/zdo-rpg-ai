@@ -35,7 +35,10 @@ public class StoryComposer {
             _ => ((string?)null, (string?)null),
         };
 
-        if (speakerId == null) return [];
+        if (speakerId == null) {
+            return [];
+        }
+
         return await QueryObserverIdsAsync(speakerId, targetId);
     }
 
@@ -53,7 +56,9 @@ public class StoryComposer {
 
     private async Task<string[]> QueryObserverIdsAsync(string speakerId, string? targetId) {
         var client = _client;
-        if (client == null) return [];
+        if (client == null) {
+            return [];
+        }
 
         try {
             var response = await client.CallAsync(

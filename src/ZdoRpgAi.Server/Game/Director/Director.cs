@@ -87,7 +87,9 @@ public class Director {
         var registered = _story.RegisterEvent(evt, observerIds);
 
         var client = _client;
-        if (client == null) return;
+        if (client == null) {
+            return;
+        }
 
         if (registered is StoryEvent.NpcSpeak npcSpeak) {
             client.Publish(

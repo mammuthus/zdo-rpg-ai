@@ -26,7 +26,9 @@ public class NpcRepository {
     public async Task<NpcInfo?> GetNpcInfoAsync(string npcId) {
         var raw = _saveGameRepo.GetNpcInfo(npcId)
                ?? _mainRepo.GetNpcInfo(npcId);
-        if (raw != null) return ToNpcInfo(raw);
+        if (raw != null) {
+            return ToNpcInfo(raw);
+        }
 
         var client = _client;
         if (client == null) {

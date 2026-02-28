@@ -77,7 +77,10 @@ public class SimpleReactiveStrategy : IDirectorStrategy {
             switch (events[i]) {
                 case StoryEvent.PlayerSpeak ps:
                     var npcId = ps.TargetCharacterId ?? await DetermineTargetNpcAsync(client, ps);
-                    if (npcId != null) return (npcId, ps.GameTime);
+                    if (npcId != null) {
+                        return (npcId, ps.GameTime);
+                    }
+
                     break;
                 case StoryEvent.NpcSpeak ns when ns.TargetCharacterId != null && !playerIds.Contains(ns.TargetCharacterId):
                     return (ns.TargetCharacterId, ns.GameTime);
@@ -111,12 +114,18 @@ public class SimpleReactiveStrategy : IDirectorStrategy {
         var npcInfos = new List<(string Id, NpcInfo Info)>();
         foreach (var npc in nearby) {
             var info = await _npcRepo.GetNpcInfoAsync(npc.CharacterId);
-            if (info != null)
+            if (info != null) {
                 npcInfos.Add((npc.CharacterId, info));
+            }
         }
 
-        if (npcInfos.Count == 0) return null;
-        if (npcInfos.Count == 1) return npcInfos[0].Id;
+        if (npcInfos.Count == 0) {
+            return null;
+        }
+
+        if (npcInfos.Count == 1) {
+            return npcInfos[0].Id;
+        }
 
         var npcList = string.Join("\n", npcInfos.Select((n, i) =>
             $"- {n.Id}: {n.Info.Name} ({n.Info.Race} {n.Info.Sex}), distance: {nearby.First(c => c.CharacterId == n.Id).DistanceMeters:F1} meters"));

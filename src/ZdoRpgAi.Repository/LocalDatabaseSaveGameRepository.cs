@@ -27,7 +27,9 @@ public class LocalDatabaseSaveGameRepository : ISaveGameRepository, IDisposable 
     }
 
     public void AddStoryEventObservers(long storyEventId, string[] characterIds) {
-        if (characterIds.Length == 0) return;
+        if (characterIds.Length == 0) {
+            return;
+        }
 
         using var tx = _db.Connection.BeginTransaction();
         foreach (var characterId in characterIds) {
@@ -118,7 +120,9 @@ public class LocalDatabaseSaveGameRepository : ISaveGameRepository, IDisposable 
     }
 
     public void ArchiveStoryEvents(long[] eventIds, long summaryId) {
-        if (eventIds.Length == 0) return;
+        if (eventIds.Length == 0) {
+            return;
+        }
 
         using var tx = _db.Connection.BeginTransaction();
         foreach (var eventId in eventIds) {
@@ -132,7 +136,9 @@ public class LocalDatabaseSaveGameRepository : ISaveGameRepository, IDisposable 
     }
 
     public void ArchiveStoryEventSummaries(long[] summaryIds, long newSummaryId) {
-        if (summaryIds.Length == 0) return;
+        if (summaryIds.Length == 0) {
+            return;
+        }
 
         using var tx = _db.Connection.BeginTransaction();
         foreach (var summaryId in summaryIds) {
@@ -150,9 +156,15 @@ public class LocalDatabaseSaveGameRepository : ISaveGameRepository, IDisposable 
         cmd.CommandText = "SELECT dataJson FROM npc_new WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", npcId);
         var json = cmd.ExecuteScalar() as string;
-        if (json == null) return null;
+        if (json == null) {
+            return null;
+        }
+
         var data = JsonSerializer.Deserialize(json, NpcDataJsonContext.Default.NpcDataJson);
-        if (data == null) return null;
+        if (data == null) {
+            return null;
+        }
+
         return new RawNpcInfo(npcId, data.Name, data.Race, data.Sex);
     }
 

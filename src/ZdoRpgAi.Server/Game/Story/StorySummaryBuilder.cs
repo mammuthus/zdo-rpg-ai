@@ -14,10 +14,12 @@ public class StorySummaryBuilder {
     public async Task<string> SummarizeEventsAsync(List<StoryEvent> events) {
         var lines = new List<string>();
         foreach (var evt in events) {
-            if (evt is StoryEvent.PlayerSpeak ps)
+            if (evt is StoryEvent.PlayerSpeak ps) {
                 lines.Add($"[{ps.GameTime}] {ps.PlayerCharacterId} says to {ps.TargetCharacterId ?? "nobody in particular"}: {ps.Text}");
-            else if (evt is StoryEvent.NpcSpeak ns)
+            }
+            else if (evt is StoryEvent.NpcSpeak ns) {
                 lines.Add($"[{ns.GameTime}] {ns.NpcCharacterId} says to {ns.TargetCharacterId ?? "nobody in particular"}: {ns.Text}");
+            }
         }
 
         var request = new LlmRequest {

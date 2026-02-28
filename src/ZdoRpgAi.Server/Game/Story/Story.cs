@@ -77,11 +77,15 @@ public class Story : IStory {
         foreach (var evt in events) {
             if (evt is StoryEvent.PlayerSpeak ps) {
                 ids.Add(ps.PlayerCharacterId);
-                if (ps.TargetCharacterId != null) ids.Add(ps.TargetCharacterId);
+                if (ps.TargetCharacterId != null) {
+                    ids.Add(ps.TargetCharacterId);
+                }
             }
             else if (evt is StoryEvent.NpcSpeak ns) {
                 ids.Add(ns.NpcCharacterId);
-                if (ns.TargetCharacterId != null) ids.Add(ns.TargetCharacterId);
+                if (ns.TargetCharacterId != null) {
+                    ids.Add(ns.TargetCharacterId);
+                }
             }
         }
         return ids.ToArray();
