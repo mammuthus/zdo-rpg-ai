@@ -172,7 +172,7 @@ Create a client config file on the machine where OpenMW is running:
 server:
 	host: <SERVER_IP>
 	port: 8080
-	clientToken: "replace-with-the-same-token"
+  clientToken: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 mod:
 	provider: openmw
